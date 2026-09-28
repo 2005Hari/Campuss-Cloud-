@@ -1,0 +1,26 @@
+# Environment / secrets
+.env
+*.env
+!.env.example
+
+# Build artifacts
+/bin/
+/dist/
+/campuscloud
+*.exe
+
+# Backups (may contain user data / DB dumps)
+/backups/
+*.tar.gz
+*.sql
+
+# Go
+*.test
+*.out
+vendor/
+
+# OS / editor
+.DS_Store
+*.swp
+.idea/
+.vscode/

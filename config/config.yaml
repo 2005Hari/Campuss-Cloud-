@@ -1,0 +1,45 @@
+# CampusCloud configuration (FR-10). Values here are structural defaults;
+# secrets (passwords, admin credentials) are never stored in this file —
+# they come only from environment variables / .env (see .env.example and
+# PRD section 18, Security Requirements).
+#
+# Every field below already has a built-in default (internal/config.Default);
+# this file only needs to list the values you want to override.
+
+project:
+  name: campuscloud
+
+network:
+  name: campuscloud_net
+
+volumes:
+  nextcloud_data: campuscloud_nextcloud_data
+  mariadb_data: campuscloud_mariadb_data
+
+compose:
+  file: docker/docker-compose.yml
+
+nextcloud:
+  service_name: nextcloud
+  container_name: campuscloud-nextcloud
+  http_port: 8080
+  health_path: /status.php
+
+mariadb:
+  service_name: mariadb
+  container_name: campuscloud-mariadb
+  host: mariadb
+  port: 3306
+
+# Resource-usage thresholds (PRD section 13). A usage percentage below
+# "warning" is normal; at or above "critical" it is, well, critical.
+monitoring:
+  interval_seconds: 30
+  thresholds:
+    warning: 70
+    high: 80
+    critical: 90
+
+backup:
+  dir: ./backups
+  retain: 5

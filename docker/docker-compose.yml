@@ -1,0 +1,70 @@
+# CampusCloud Docker architecture (PRD section 12).
+#
+# The network and both volumes are created by the campuscloud CLI itself
+# (`campuscloud deploy` -> internal/deployment.Deploy), not by Compose, so
+# they are declared here as `external`. This lets `campuscloud status` /
+# `containers` / `health` reason about a stable, pre-existing network and
+# volumes even if the compose stack is torn down and re-created.
+#
+# MariaDB is deliberately NOT published to the host: it only talks to
+# Nextcloud over the internal Docker network (PRD section 18, Security
+# Requirements: "keep the database on the internal Docker network").
+
+services:
+  mariadb:
+    image: mariadb:11
+    container_name: campuscloud-mariadb
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-nextcloud}
+      MYSQL_USER: ${MYSQL_USER:-nextcloud}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - campuscloud_mariadb_data:/var/lib/mysql
+    networks:
+      - campuscloud_net
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=$$MYSQL_ROOT_PASSWORD mysqladmin ping -uroot --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  nextcloud:
+    image: nextcloud:29-apache
+    container_name: campuscloud-nextcloud
+    restart: unless-stopped
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    ports:
+      - "${CAMPUSCLOUD_HTTP_PORT:-8080}:80"
+    environment:
+      MYSQL_HOST: mariadb
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-nextcloud}
+      MYSQL_USER: ${MYSQL_USER:-nextcloud}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      NEXTCLOUD_ADMIN_USER: ${NEXTCLOUD_ADMIN_USER:-admin}
+      NEXTCLOUD_ADMIN_PASSWORD: ${NEXTCLOUD_ADMIN_PASSWORD}
+      NEXTCLOUD_TRUSTED_DOMAINS: ${NEXTCLOUD_TRUSTED_DOMAINS:-localhost}
+    volumes:
+      - campuscloud_nextcloud_data:/var/www/html
+    networks:
+      - campuscloud_net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost/status.php || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+networks:
+  campuscloud_net:
+    external: true
+
+volumes:
+  campuscloud_nextcloud_data:
+    external: true
+  campuscloud_mariadb_data:
+    external: true
