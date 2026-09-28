@@ -60,7 +60,19 @@ explicit, intentional action outside `campuscloud`'s normal command set.
 | `internal/health` | Composable `Checker`s (Docker daemon, container running/healthy, network, storage, HTTP, database connectivity) and aggregation into a `Report` (FR-07) |
 | `internal/deployment` | `Doctor` (FR-01) and `Deploy` (FR-02): orchestrates the above into the full environment-check-then-deploy-then-wait-for-health flow |
 | `internal/backup` | `Create`/`Restore` (FR-08/FR-09): database dump/restore, config and file archiving, checksummed manifests, retention pruning |
-| `cmd/campuscloud` | Cobra CLI wiring each command (section 10) to the packages above |
+| `internal/api` | Token-authenticated HTTP/JSON API (`campuscloud serve`) wrapping the packages above for the web dashboard: read endpoints respond directly, mutating ones (deploy/start/stop/restart/backup/restore) run as background `Job`s polled via `GET /api/v1/jobs/{id}` |
+| `cmd/campuscloud` | Cobra CLI wiring each command (section 10) to the packages above, plus `serve` |
+
+## Web dashboard (section 17: optional Phase 2 feature)
+
+`web/` is a separate Next.js application — a plain client-rendered SPA
+with no server component of its own — that calls `internal/api`'s HTTP
+API from the browser. It is deployed independently (to Vercel or anywhere
+else that serves static/Next.js apps), while `campuscloud serve` runs on
+the VM next to Docker, exactly like every other campuscloud command. The
+two communicate only over HTTPS with a bearer token; see
+[`dashboard.md`](dashboard.md) for the deployment topology, and
+[`../web/README.md`](../web/README.md) for the dashboard itself.
 
 Every package that talks to Docker does so through the `dockercli.Runner`
 interface, which is a thin seam over `os/exec` — this is what lets the unit

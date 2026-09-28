@@ -77,6 +77,31 @@ func minStorageCheck(path string, minBytes uint64) health.Checker {
 	}}
 }
 
+// HealthCheckers builds the full FR-07 health-check list — Docker, the
+// campuscloud network, both containers' running/health state, database
+// connectivity, storage, and Nextcloud's HTTP availability — shared by the
+// `campuscloud health` CLI command and the HTTP API's /health endpoint so
+// the two never drift apart.
+func HealthCheckers(cfg *config.Config, client *dockercli.Client) []health.Checker {
+	return []health.Checker{
+		health.DockerDaemonCheck(client),
+		health.NetworkCheck(cfg.Network.Name, client),
+		health.ContainerRunningCheck(cfg.Nextcloud.ContainerName, client),
+		health.ContainerHealthCheck(cfg.Nextcloud.ContainerName, client),
+		health.ContainerRunningCheck(cfg.MariaDB.ContainerName, client),
+		health.ContainerHealthCheck(cfg.MariaDB.ContainerName, client),
+		health.ComposeExecCheck("database-connectivity", client, cfg.MariaDBService(),
+			"sh", "-c", `MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysqladmin ping -uroot`),
+		health.StorageCheck(cfg.Backup.Dir, cfg.Monitoring.Thresholds),
+		health.HTTPCheck("nextcloud-http", fmt.Sprintf("http://localhost:%d%s", cfg.Nextcloud.HTTPPort, cfg.Nextcloud.HealthPath), 5*time.Second),
+	}
+}
+
+// FullHealth runs HealthCheckers and aggregates the result.
+func FullHealth(ctx context.Context, cfg *config.Config, client *dockercli.Client) health.Report {
+	return health.Run(ctx, HealthCheckers(cfg, client))
+}
+
 // Options controls Deploy's behavior.
 type Options struct {
 	SkipDoctor    bool

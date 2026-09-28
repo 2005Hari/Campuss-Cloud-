@@ -31,9 +31,9 @@ const (
 
 // Result is the outcome of a single named check.
 type Result struct {
-	Name    string
-	Status  Status
-	Message string
+	Name    string `json:"name"`
+	Status  Status `json:"status"`
+	Message string `json:"message"`
 }
 
 // Checker runs one health check.
@@ -57,8 +57,8 @@ func fail(name, msg string) Result { return Result{Name: name, Status: StatusFai
 
 // Report is the aggregate result of running every check.
 type Report struct {
-	Results []Result
-	Overall Status
+	Results []Result `json:"results"`
+	Overall Status   `json:"overall"`
 }
 
 // Run executes every checker (sequentially, so output ordering is stable

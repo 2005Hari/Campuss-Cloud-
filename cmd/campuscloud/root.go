@@ -56,6 +56,7 @@ private-cloud environment for colleges and student teams.`,
 		newBackupCmd(a),
 		newRestoreCmd(a),
 		newConfigCmd(a),
+		newServeCmd(a),
 		newVersionCmd(),
 	)
 

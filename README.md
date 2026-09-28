@@ -102,27 +102,47 @@ groups and project-workspace folders) are in
 | `campuscloud backup` / `backup list` | Back up the database, config, and files (FR-08) |
 | `campuscloud restore <id\|--latest>` | Validate and restore a backup (FR-09) |
 | `campuscloud config [--validate]` | Show / validate the effective configuration (FR-10) |
+| `campuscloud serve` | Run the HTTP API behind the web dashboard (see below) |
 | `campuscloud version` | Print the CLI version |
 
 Every command accepts `--config <path>` (default `config/config.yaml`) and
 `--env <path>` (default `.env`).
 
+## Web Dashboard
+
+Everything above is also available from a browser: `campuscloud serve`
+exposes a token-authenticated HTTP API, and `web/` is a Next.js dashboard
+that talks to it — deployable straight to **Vercel**, since it's a plain
+client-rendered app with no secrets of its own (the API token is entered
+by the admin at login and kept only in their browser).
+
+```bash
+./bin/campuscloud serve --token "$(openssl rand -hex 32)" \
+  --cors-origin https://your-dashboard.vercel.app
+```
+
+See [`docs/dashboard.md`](docs/dashboard.md) for the full setup (systemd
+unit, HTTPS reverse proxy, CORS) and [`web/README.md`](web/README.md) for
+deploying the dashboard itself.
+
 ## Project Structure
 
 ```
 campuscloud/
-├── cmd/campuscloud/       CLI entrypoint and command definitions (cobra)
+├── cmd/campuscloud/       CLI entrypoint and command definitions (cobra), incl. `serve`
 ├── internal/
 │   ├── config/            YAML + environment-variable configuration (FR-10)
 │   ├── dockercli/         docker / docker compose CLI wrapper
 │   ├── deployment/        doctor (FR-01) and deploy (FR-02) orchestration
 │   ├── monitoring/        CPU / RAM / storage sampling + thresholds (FR-06)
 │   ├── health/            composable health checks (FR-07)
-│   └── backup/            backup + restore (FR-08 / FR-09)
+│   ├── backup/            backup + restore (FR-08 / FR-09)
+│   └── api/               HTTP/JSON API behind `campuscloud serve` — the web dashboard's backend
+├── web/                    Next.js admin dashboard (deployable to Vercel)
 ├── config/config.yaml      structural defaults (no secrets)
 ├── docker/docker-compose.yml
 ├── scripts/                Nextcloud provisioning helpers (FR-11 / FR-12)
-├── docs/                   installation, architecture, backup/recovery docs
+├── docs/                   installation, architecture, backup/recovery, dashboard docs
 ├── tests/integration/      Docker-dependent end-to-end tests (build tag)
 ├── .env.example
 └── go.mod
