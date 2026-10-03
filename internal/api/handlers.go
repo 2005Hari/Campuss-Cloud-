@@ -12,7 +12,6 @@ import (
 
 	"github.com/2005Hari/campuscloud/internal/backup"
 	"github.com/2005Hari/campuscloud/internal/deployment"
-	"github.com/2005Hari/campuscloud/internal/health"
 	"github.com/2005Hari/campuscloud/internal/monitoring"
 )
 
@@ -130,22 +129,20 @@ type containerStatsView struct {
 	BlockIO    string `json:"block_io"`
 }
 
+// handleHealth and handleDoctor always respond 200 OK: the HTTP status
+// reflects whether the API successfully ran the checks, not whether the
+// checks passed — that result lives in the body's "overall" field. A
+// non-2xx here would otherwise be indistinguishable, to a generic HTTP
+// client, from the request itself failing, which would discard the
+// detailed per-check report the caller actually wants on a failure.
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	report := deployment.FullHealth(r.Context(), s.cfg, s.client)
-	status := http.StatusOK
-	if report.Overall == health.StatusFail {
-		status = http.StatusServiceUnavailable
-	}
-	writeJSON(w, status, report)
+	writeJSON(w, http.StatusOK, report)
 }
 
 func (s *Server) handleDoctor(w http.ResponseWriter, r *http.Request) {
 	report := deployment.Doctor(r.Context(), s.cfg, s.client)
-	status := http.StatusOK
-	if report.Overall == health.StatusFail {
-		status = http.StatusServiceUnavailable
-	}
-	writeJSON(w, status, report)
+	writeJSON(w, http.StatusOK, report)
 }
 
 func (s *Server) handleConfig(w http.ResponseWriter, r *http.Request) {

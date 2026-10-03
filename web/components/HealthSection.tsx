@@ -11,6 +11,10 @@ export function HealthSection({ credentials }: { credentials: Credentials }) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // /api/v1/health always responds 200 with a full report — even when
+  // every check fails, that's "overall": "fail" in the body, not an HTTP
+  // error — so anything caught here is a genuine request failure (API
+  // unreachable, bad token, etc.), not a normal failing health check.
   const check = useCallback(async () => {
     setLoading(true);
     try {
@@ -18,14 +22,7 @@ export function HealthSection({ credentials }: { credentials: Credentials }) {
       setReport(r);
       setError(null);
     } catch (err) {
-      // A failing health check is a normal, expected result (503) — the
-      // API still returns a full report body in that case, but a network-
-      // level failure (ApiError with no report) should surface as an error.
-      if (err instanceof ApiError && err.status === 0) {
-        setError(err.message);
-      } else {
-        setError(err instanceof Error ? err.message : String(err));
-      }
+      setError(err instanceof ApiError ? err.message : String(err));
     } finally {
       setLoading(false);
     }

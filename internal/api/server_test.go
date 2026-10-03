@@ -157,6 +157,34 @@ func TestCORSWildcardAllowsAnyOrigin(t *testing.T) {
 	}
 }
 
+func TestHandleHealthReturns200EvenWhenChecksFail(t *testing.T) {
+	// docker-daemon check fails since no fake response is registered for
+	// `docker info`, which drives the whole report's overall to "fail" —
+	// the HTTP status must still be 200 so the caller gets the full body.
+	s := testServer(t, "secret", nil, nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/health", nil)
+	req.Header.Set("Authorization", "Bearer secret")
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 regardless of check outcome", rec.Code)
+	}
+	var body struct {
+		Overall string `json:"overall"`
+		Results []any  `json:"results"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if body.Overall != "fail" {
+		t.Errorf("overall = %q, want fail", body.Overall)
+	}
+	if len(body.Results) == 0 {
+		t.Error("expected a non-empty results list in the body")
+	}
+}
+
 func TestHandleContainersUsesLowercaseJSON(t *testing.T) {
 	s := testServer(t, "secret", nil, map[string]fakeResponse{
 		cmdKey("docker", "compose", "-f", "docker/docker-compose.yml", "-p", "campuscloud", "ps", "-a", "--format", "json"): {
